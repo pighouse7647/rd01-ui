@@ -3,7 +3,6 @@
 import React, {Component} from "react";
 import es6BindAll from "es6bindall";
 import _ from "lodash";
-// import '../../../public/css/react-toggle.css';
 import * as PropTypes from "prop-types";
 import * as d3 from 'd3';
 import "react-d3-treemap/dist/react.d3.treemap.css";
@@ -25,10 +24,8 @@ export default class JasmineD3BarChartDemo extends Component {
     };
     this.svg = {};
     es6BindAll(this, []);
-    this.BOX_WIDTH = 900;
     this.scaling = currentMax => a => {
       let v = currentMax / 900;
-      // console.log('比例', v, a.value)
       a.value = Number(a.value) / Number(v);
       return a;
     };
@@ -49,6 +46,7 @@ export default class JasmineD3BarChartDemo extends Component {
     this.Y_BAR_THICK = 25;
     this.BAR_BG_COLOR = 'grey';
 
+    // Scale
     this.amountClassifior = a => {
       if (a.amount < 10000) {
         return 'H0';
@@ -68,7 +66,7 @@ export default class JasmineD3BarChartDemo extends Component {
         return 'H7';
       }
     };
-
+    // Color Map
     this.colorMap = new Map();
     this.colorMap.set('A', 'DodgerBlue');
     this.colorMap.set('B', 'DeepSkyBlue');
@@ -82,10 +80,7 @@ export default class JasmineD3BarChartDemo extends Component {
   componentWillReceiveProps(nextProps) {
     console.log('nextData=(%o), stateDate=(%o)', nextProps.data, this.state.data)
     if (nextProps.data != this.state.data) {
-      let currentMax = nextProps.data.map(a => a.value).sort(this.DESC_COMPARATOR)[0];
-      this.setState({data: nextProps.data}, () => {
-        // return this.createChart();
-      });
+      this.setState({data: nextProps.data}, () => {});
     }
   }
 
@@ -96,9 +91,9 @@ export default class JasmineD3BarChartDemo extends Component {
     .attr("width", diameter)
     .attr("height", diameter)
     .attr("className", "barchart");
-    //
-    // let currentMax = this.props.data.map(a => a.value).sort(this.DESC_COMPARATOR)[0];
-    //
+
+
+
     this.setState({
       data: this.props.data
 
@@ -108,7 +103,6 @@ export default class JasmineD3BarChartDemo extends Component {
   }
 
   componentDidUpdate() {
-    // console.log('元件更新後', this.state)
     this.svg.selectAll("*").remove();
     this.createChart();
   }
@@ -118,8 +112,6 @@ export default class JasmineD3BarChartDemo extends Component {
         ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, c =>
             (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
         );
-    let currentMax = this.state.data.map(a => a.value).sort(this.DESC_COMPARATOR)[0];
-    let v = currentMax / 900;
 
     return (<div>
       <div>目前總和:{Number(Math.round(this.state.data.map(a => a.value).reduce((a, b) => Number(a) + Number(b), 0)).toFixed(2))}</div>
@@ -129,15 +121,17 @@ export default class JasmineD3BarChartDemo extends Component {
             this.setState({
                   data:
                       [...this.state.data,
-                        Object.assign({}, {...this.state.data[Math.round(Math.random() % this.state.data.length).toFixed(0)]},
+                        Object.assign({},
+                            // 選擇一筆複製
+                            {...this.state.data[Math.round(Math.random() % this.state.data.length).toFixed(0)]},
+                            // 修改內容
                             {
-                              key: uuidv4(), amount: Number(Math.round(Math.random() * 5 * 10000).toFixed(0)), value: Number(Math.round(Math.random() * 10000000).toFixed(0))
+                              key: uuidv4(),
+                              amount: Number(Math.round(Math.random() * 5 * 10000).toFixed(0)),
+                              value: Number(Math.round(Math.random() * 10000000).toFixed(0))
                             })]
-                },
-                () => {
-                  // return this.createChart();
-                });
-          }}>刷新
+                }, () => {});
+          }}>新增一筆
       </button>
       <div ref={'barChartRef'}></div>
     </div>);
@@ -151,8 +145,7 @@ export default class JasmineD3BarChartDemo extends Component {
     .map(a => a[1].map(b => b.value).sort(this.DESC_COMPARATOR)[0])
     .sort(this.DESC_COMPARATOR)[0];
 
-    // console.log('最大值', upperBound, zoomRatio)
-    console.log('分組後資料', groupedData)
+    console.log('分組後資料=(%o)', groupedData)
     Object.entries(groupedData).sort(this.ASC_STR_COMPARATOR).forEach((entry, columnIndex) => {
       let group = entry[0];
       let data = entry[1].sort((a, b) => {
@@ -169,12 +162,9 @@ export default class JasmineD3BarChartDemo extends Component {
       });
       let greenBars = this.svg.selectAll(`.${group}`).data(data, d => d.key);
 
+      // Exit
       this.svg.selectAll('.rect')
       .exit()
-      // .transition()
-      // .attr("class", "exit")
-      // .attr("x", 0)
-      // .attr('y', 0)
       .remove();
 
 
@@ -214,7 +204,6 @@ export default class JasmineD3BarChartDemo extends Component {
 
 
 
-      // ENTER
       // 方塊
       greenBars
       .enter()
@@ -253,25 +242,7 @@ export default class JasmineD3BarChartDemo extends Component {
           .duration(1600)
           .attr('x', (d, rowIndex) => rowIndex == 0 ? (0 + (d.value / 10)) / zoomRatio : accumPreValue(d, rowIndex) / zoomRatio + (d.value / 10) / zoomRatio)
           .attr("y", columnIndex * this.Y_BAR_INTERVAL + (this.Y_BAR_THICK / 1.4))
-          .text(d => `name: ${d.name} bound:${d.amount} value:${d.value}`)
-
-
-      ;
-
-
-
-
-      // Transition
-      // greenBars
-      // .transition()
-      // .duration(1600)
-      // .attr('x', (d , i) => (i == 0 ? 0 : accumPreValue(d, i) / zoomRatio))
-      // .attr('width', (d, i) => d.value / zoomRatio)
-      // .attr('y', columnIndex * this.Y_BAR_INTERVAL)
-      // .attr('height', this.Y_BAR_THICK)
-      // .attr('class', `${group}`)
-
-      ;
+          .text(d => `name: ${d.name} bound:${d.amount} value:${d.value}`);
 
     });
 
@@ -295,12 +266,3 @@ export default class JasmineD3BarChartDemo extends Component {
 JasmineD3BarChartDemo.propTypes = {
   data: PropTypes.arrayOf(PropTypes.any),
 };
-
-// function mapStateToProps() {
-//
-//
-//
-//
-// }
-
-// export default connect(mapStateToProps)(JasmineD3BarChartDemo);
