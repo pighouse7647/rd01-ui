@@ -68,19 +68,20 @@ export default class JasmineD3BarChartDemo extends Component {
     };
     // Color Map
     this.colorMap = new Map();
-    this.colorMap.set('A', 'DodgerBlue');
-    this.colorMap.set('B', 'DeepSkyBlue');
-    this.colorMap.set('C', 'steelBlue');
-    this.colorMap.set('D', 'Turquoise');
-    this.colorMap.set('E', 'SlateBlue');
-    this.colorMap.set('F', 'RoyalBlue');
-    this.colorMap.set('G', 'MediumBlue');
+    this.colorMap.set('Thomas', 'DodgerBlue');
+    this.colorMap.set('Willy', 'DeepSkyBlue');
+    this.colorMap.set('Tim', 'steelBlue');
+    this.colorMap.set('Dennis', 'Turquoise');
+    this.colorMap.set('Sunny', 'SlateBlue');
+    this.colorMap.set('Naomi', 'RoyalBlue');
+    this.colorMap.set('Gary', 'MediumBlue');
   }
 
   componentWillReceiveProps(nextProps) {
     console.log('nextData=(%o), stateDate=(%o)', nextProps.data, this.state.data)
     if (nextProps.data != this.state.data) {
-      this.setState({data: nextProps.data}, () => {});
+      this.setState({data: nextProps.data}, () => {
+      });
     }
   }
 
@@ -91,15 +92,16 @@ export default class JasmineD3BarChartDemo extends Component {
     .attr("width", diameter)
     .attr("height", diameter)
     .attr("className", "barchart");
+// fetch('http://localhost:8080/customized/all')
+    fetch('/customized/all')
+    .then(res => res.json())
+    .then(res => {
+      this.setState({data: res}, () => {
+        // return this.createChart();
+      });
 
+    }).catch(console.log)
 
-
-    this.setState({
-      data: this.props.data
-
-    }, () => {
-      // return this.createChart();
-    });
   }
 
   componentDidUpdate() {
@@ -119,18 +121,19 @@ export default class JasmineD3BarChartDemo extends Component {
           className={'btn btn-primary'}
           onClick={e => {
             this.setState({
-                  data:
-                      [...this.state.data,
-                        Object.assign({},
-                            // 選擇一筆複製
-                            {...this.state.data[Math.round(Math.random() % this.state.data.length).toFixed(0)]},
-                            // 修改內容
-                            {
-                              key: uuidv4(),
-                              amount: Number(Math.round(Math.random() * 5 * 10000).toFixed(0)),
-                              value: Number(Math.round(Math.random() * 10000000).toFixed(0))
-                            })]
-                }, () => {});
+              data:
+                  [...this.state.data,
+                    Object.assign({},
+                        // 選擇一筆複製
+                        {...this.state.data[Math.round(Math.random() % this.state.data.length).toFixed(0)]},
+                        // 修改內容
+                        {
+                          key: uuidv4(),
+                          amount: Number(Math.round(Math.random() * 5 * 10000).toFixed(0)),
+                          value: Number(Math.round(Math.random() * 10000000).toFixed(0))
+                        })]
+            }, () => {
+            });
           }}>新增一筆
       </button>
       <div ref={'barChartRef'}></div>
@@ -138,118 +141,166 @@ export default class JasmineD3BarChartDemo extends Component {
   }
 
   createChart() {
-    let groupedData = _.groupBy(this.state.data, this.amountClassifior);
-    let accumulatedGroupedData = this.getAccumulatedGroupedData(groupedData);
-
-    let upperBound = [...accumulatedGroupedData]
-    .map(a => a[1].map(b => b.value).sort(this.DESC_COMPARATOR)[0])
-    .sort(this.DESC_COMPARATOR)[0];
-
+    let groupedData = this.getGroupedData(this.state.data);
     console.log('分組後資料=(%o)', groupedData)
-    Object.entries(groupedData).sort(this.ASC_STR_COMPARATOR).forEach((entry, columnIndex) => {
-      let group = entry[0];
-      let data = entry[1].sort((a, b) => {
-        let nameA = a.name.toUpperCase();
-        let nameB = b.name.toUpperCase();
-        if (nameA < nameB) {
-          return 1;
-        }
-        if (nameA > nameB) {
-          return -1;
-        }
-        // names must be equal
-        return 0;
-      });
-      let greenBars = this.svg.selectAll(`.${group}`).data(data, d => d.key);
+    if (!!groupedData) {
+      let accumulatedGroupedData = this.getAccumulatedGroupedData(_.cloneDeep(groupedData));
+      let upperBound = this.getUpperBound(accumulatedGroupedData);
 
-      // Exit
-      this.svg.selectAll('.rect')
-      .exit()
-      .remove();
-
-
-      let accumulatedGroupedDatum = accumulatedGroupedData.get(group);
-      let localUpperBound = accumulatedGroupedDatum.map(a => a.value).sort(this.DESC_COMPARATOR)[0];
-      let zoomRatio = Number(upperBound) / 900;
-      console.log('group=(%o), locally upperBound=(%o), Global upperBound=(%o), zoom Ratio=(%o)', group, localUpperBound, upperBound, zoomRatio);
-
-
-
-
-      let accumValue = (d, i) => [...accumulatedGroupedDatum].filter(g => g.key == d.key)[0].value;
-      let accumPreValue = (d, i) => {
-        // console.log('g', [...accumulatedGroupedDatum])
-        let any = [...accumulatedGroupedDatum]
-        .map((g, index) => {
-          if (g.key == d.key) {
-            return [...accumulatedGroupedDatum][index - 1];
-          } else {
-            return null;
+      Object.entries(groupedData).sort(this.ASC_STR_COMPARATOR).forEach((entry, columnIndex) => {
+        let group = entry[0];
+        let data = entry[1].sort((a, b) => {
+          let nameA = a.name.toUpperCase();
+          let nameB = b.name.toUpperCase();
+          if (nameA < nameB) {
+            return 1;
           }
+          if (nameA > nameB) {
+            return -1;
+          }
+          // names must be equal
+          return 0;
+        });
+        let greenBars = this.svg.selectAll(`.${group}`).data(data, d => d.key);
+
+        // Exit
+        this.svg.selectAll('.rect')
+        .exit()
+        .remove();
+
+        let accumulatedGroupedDatum = accumulatedGroupedData.get(group);
+        let localUpperBound = accumulatedGroupedDatum.map(a => a.value).sort(this.DESC_COMPARATOR)[0];
+        let zoomRatio = Number(upperBound) / 900;
+        console.log('group=(%o), locally upperBound=(%o), Global upperBound=(%o), zoom Ratio=(%o)', group, localUpperBound, upperBound, zoomRatio);
+
+        let isMinInGroup = d => {
+          let groupedDatum = groupedData[`${group}`];
+          let b1 = groupedDatum.sort((a, b) => a.value - b.value)[0].key == d.key;
+          if (b1) {
+            // console.log('最小', d, groupedDatum)
+          }
+          return b1;
+        };
+
+        // 方塊
+        greenBars
+        .enter()
+        .append('rect')
+        .attr('x', localUpperBound / zoomRatio)
+        .attr('width', 900 - (localUpperBound / zoomRatio))
+        .attr('y', columnIndex * this.Y_BAR_INTERVAL)
+        .attr('height', this.Y_BAR_THICK)
+        .attr('fill', (d) => `${this.colorMap.get(d.name)}`)
+        .attr('class', `${group}`)
+        .on("mouseover", (d, i) => this.handleMouseOver(d, i, data, columnIndex, group, isMinInGroup(d)))
+
+        // 框線
+        .attr('stroke', '#ffffff')
+        .attr('stroke-dasharray', '1,2')
+        .attr('stroke-linecap', 'butt')
+        .attr('stroke-width', '1')
+        // 動畫
+        .transition()
+        .duration(1600)
+        .attr('x', (d, i) => {
+          // if (i > 0) {
+            console.log('左', (isMinInGroup(d) && i === 0 ? 0 : this.getAccPreValue(accumulatedGroupedDatum)(d, i) / zoomRatio))
+          // }
+
+          return (Object.is(isMinInGroup(d), true) && i === 0 ? 0 : this.getAccPreValue(accumulatedGroupedDatum)(d, i) / zoomRatio);
         })
-        .filter(a => a != null)[0];
-
-        return any ? any.value : 0;
-      };
-      let accumNextValue = (d, i) => {
-        // console.log('g', [...accumulatedGroupedDatum])
-        return [...accumulatedGroupedDatum].map((g, index) => {
-          if (g.key == d.key) {
-            return [...accumulatedGroupedDatum][index + 1];
-          } else {
-            return null;
+        .attr('width', (d, i) => {
+          if (i > 0) {
+            // console.log('右', (accumValue(d, i) - accumPreValue(d, i)) / zoomRatio)
           }
-        }).filter(a => a != null) || [{value: 900}][0].value;
-      };
+          return (isMinInGroup(d) && i == 0 ? this.getAccCurrentValue(accumulatedGroupedDatum)(d, i) / zoomRatio : (this.getAccCurrentValue(accumulatedGroupedDatum)(d, i) - this.getAccPreValue(accumulatedGroupedDatum)(d, i)) / zoomRatio);
+        })
+        .attr('y', columnIndex * this.Y_BAR_INTERVAL)
+        .attr('height', this.Y_BAR_THICK)
+        .attr('class', `${group}`)
+        ;
 
-
-
-      // 方塊
-      greenBars
-      .enter()
-      .append('rect')
-      .attr('x', localUpperBound / zoomRatio)
-      .attr('width', 900 - (localUpperBound / zoomRatio))
-      .attr('y', columnIndex * this.Y_BAR_INTERVAL)
-      .attr('height', this.Y_BAR_THICK)
-      .attr('fill', (d) => `${this.colorMap.get(d.name)}`)
-      .attr('class', `${group}`)
-      .transition()
-      .duration(1600)
-      .attr('x', (d , i) => {
-        if(i > 0) console.log('左', (accumPreValue(d, i)/zoomRatio))
-
-        return (i == 0 ? 0 : accumPreValue(d, i) / zoomRatio);
-      })
-      .attr('width', (d, i) => {
-       if(i > 0) console.log('右', (accumValue(d, i) - accumPreValue(d, i))/zoomRatio)
-        return (i == 0 ? accumValue(d, i)/zoomRatio : (accumValue(d, i) - accumPreValue(d, i)) / zoomRatio);
-      })
-      .attr('y', columnIndex * this.Y_BAR_INTERVAL)
-      .attr('height', this.Y_BAR_THICK)
-      .attr('class', `${group}`)
-      ;
-
-      // 文字
-      greenBars
-          .enter()
-          .append("text")
-          .attr("clip-path", d => d.key)
-          .append("tspan")
-          .attr('fill', 'white')
-          .attr('font-size', '55%')
-          .transition()
-          .duration(1600)
-          .attr('x', (d, rowIndex) => rowIndex == 0 ? (0 + (d.value / 10)) / zoomRatio : accumPreValue(d, rowIndex) / zoomRatio + (d.value / 10) / zoomRatio)
-          .attr("y", columnIndex * this.Y_BAR_INTERVAL + (this.Y_BAR_THICK / 1.4))
-          .text(d => `name: ${d.name} bound:${d.amount} value:${d.value}`);
-
-    });
-
+      });
+    }
   }
 
+  /**
+   * 依照「依據保額等級分組後的資料」對value欄位做累計相加
+   * 取得該群組中, 位於目前位置的資料(累計保額)
+   * @param accumulatedGroupedDatum
+   * @returns {function(*, *): *}
+   */
+  getAccCurrentValue(accumulatedGroupedDatum) {
+    let accumValue = (d, i) => [...accumulatedGroupedDatum].filter(g => g.key == d.key)[0].value;
+    return accumValue;
+  }
+
+  /**
+   * 依照「依據保額等級分組後的資料」對value欄位做累計相加
+   * 取得該群組中, 位於目前位置的前一筆(右)資料(累計保額)
+   * @param accumulatedGroupedDatum
+   * @returns {function(*, *): number}
+   */
+  getAccPreValue(accumulatedGroupedDatum) {
+    let accumPreValue = (d, i) => {
+      let any = [...accumulatedGroupedDatum]
+      .map((g, index) => {
+        if (g.key == d.key) {
+          return [...accumulatedGroupedDatum][index - 1];
+        } else {
+          return null;
+        }
+      })
+      .filter(a => a != null)[0];
+
+      return any ? any.value : 0;
+    };
+    return accumPreValue;
+  }
+
+  /**
+   * 依照「依據保額等級分組後的資料」對value欄位做累計相加
+   * 取得該群組中, 位於目前位置的下一筆(右)資料(累計保額)
+   * @param accumulatedGroupedDatum
+   * @returns {function(*, *): (any[] | number)}
+   */
+  getAccNextValue(accumulatedGroupedDatum) {
+    let accumNextValue = (d, i) => {
+      return [...accumulatedGroupedDatum].map((g, index) => {
+        if (g.key == d.key) {
+          return [...accumulatedGroupedDatum][index + 1];
+        } else {
+          return null;
+        }
+      }).filter(a => a != null) || [{value: 900}][0].value;
+    };
+    return accumNextValue;
+  }
+
+  /**
+   * 取得不分群組 最高的保額 (value)
+   * @param accumulatedGroupedData
+   * @returns {any}
+   */
+  getUpperBound(accumulatedGroupedData) {
+    return [...accumulatedGroupedData]
+    .map(a => a[1].map(b => b.value).sort(this.DESC_COMPARATOR)[0])
+    .sort(this.DESC_COMPARATOR)[0];
+  }
+
+  /**
+   * 依據保額等級分組後的資料
+   */
+  getGroupedData(data) {
+    return _.groupBy(data, a => this.amountClassifior(a));
+  }
+  /**
+   * 將「依據保額等級分組後的資料」對value欄位做累計相加
+   * @param groupedData 依照保額等級分類的資料
+   * @returns {Map<any, any>}
+   */
   getAccumulatedGroupedData(groupedData) {
-    return Object.entries(_.cloneDeep(groupedData))
+    return Object.entries(groupedData)
     .map(entry => {
       for (let i = 0; i < entry[1].length; i++) {
         entry[1][i].value = (i - 1 < 0 ? Number(entry[1][i].value) : Number(entry[1][i].value) + Number(entry[1][i - 1].value));
@@ -261,6 +312,57 @@ export default class JasmineD3BarChartDemo extends Component {
     })
     .reduce((a, b) => a.set(b[0], b[1]), new Map());
   }
+
+
+  /**
+   * 滑鼠移至方塊後應處理
+   * @param dd (d, i) => 中的 d
+   * @param ii (d, i) => 中的 i
+   * @param data 該保額等級的所有資料
+   * @param columnIndex
+   * @param group 所屬保額等級
+   * @param isMini 是否為該等級中最低保額
+   */
+  handleMouseOver(dd, ii, data, columnIndex, group, isMini) {
+    let selectAll = d3.selectAll(`[id^=onFocusBarTxt_]`);
+    if (!!selectAll && selectAll.nodes().length > 0) {
+      if(selectAll.nodes()[0].getAttribute('clip-path') != dd.key) {
+          selectAll.remove();
+      }
+    }
+
+    let groupedData = this.getGroupedData(this.state.data);
+    let accumulatedGroupedData = this.getAccumulatedGroupedData(_.cloneDeep(groupedData));
+    let upperBound = this.getUpperBound(accumulatedGroupedData);
+    let zoomRatio = Number(upperBound) / 900;
+    let x = (d, rowIndex) => Object.is(isMini, true) && rowIndex == 0 ? (0 + (d.value / 10)) / zoomRatio : this.getAccPreValue(accumulatedGroupedData.get(group))(d, rowIndex)
+        / zoomRatio + (d.value / 10) / zoomRatio;
+    let y = columnIndex * this.Y_BAR_INTERVAL + (this.Y_BAR_THICK / 1.4);
+    // Specify where to put label of text
+    // console.log('進入', d, i, data, group)
+    let greenBars = this.svg.selectAll(`.rect`).data(data, d => d.key);
+    if (!!greenBars) {
+      greenBars
+      .enter()
+      .append("text")
+      .attr('id', `onFocusBarTxt_${dd.key}`)
+      .attr('class', 'barTxt')
+      .attr("clip-path", dd.key)
+      .append("tspan")
+      .attr('fill', 'white')
+      .attr('font-size', '55%')
+      .transition()
+      .duration(0)
+      .attr('x', (d, i) => x(d, i))
+      .attr("y", y)
+      .text((d) => d == dd ? `name: ${dd.name} bound:${dd.amount} value:${dd.value}` : '')
+      ;
+
+
+    }
+  }
+
+
 }
 
 JasmineD3BarChartDemo.propTypes = {
